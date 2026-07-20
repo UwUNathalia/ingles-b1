@@ -1,6 +1,4 @@
--- SEMANA 29 · Cultura, cine y arte · 69 palabras
--- Nota: el título original decía "70 palabras"; transcribiendo la tabla con cuidado
--- solo conté 69. Si tienes el listado en texto plano, dime y reviso la que falte.
+-- SEMANA 29 · Cultura, cine y arte · 70 palabras
 insert into words (week, section, en, es) values
 (29, 'Arte y literatura', 'cultural', 'cultural'),
 (29, 'Arte y literatura', 'art', 'arte'),
@@ -48,6 +46,7 @@ insert into words (week, section, en, es) values
 (29, 'Cine', 'premiere', 'estreno'),
 (29, 'Cine', 'review', 'reseña'),
 (29, 'Cine', 'rating', 'calificación'),
+(29, 'Cine', 'award', 'premio(galardon)'),
 (29, 'Cine', 'performance', 'actuación'),
 (29, 'Teatro, música y patrimonio', 'to perform', 'actuar/interpretar'),
 (29, 'Teatro, música y patrimonio', 'stage (theater)', 'escenario'),

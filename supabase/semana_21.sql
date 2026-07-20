@@ -1,6 +1,4 @@
--- SEMANA 21 · Trabajo, profesiones y CV · 72 palabras
--- Nota: el título original decía "73 palabras"; transcribiendo la tabla con cuidado
--- solo conté 72. Si tienes el listado en texto plano, dime y reviso la que falte.
+-- SEMANA 21 · Trabajo, profesiones y CV · 73 palabras
 insert into words (week, section, en, es) values
 (21, 'Trabajo y contratos', 'job', 'trabajo (empleo)'),
 (21, 'Trabajo y contratos', 'profession', 'profesión'),
@@ -24,6 +22,7 @@ insert into words (week, section, en, es) values
 (21, 'Trabajo y contratos', 'part-time', 'media jornada'),
 (21, 'Trabajo y contratos', 'contract', 'contrato'),
 (21, 'Trabajo y contratos', 'to hire', 'contratar'),
+(21, 'Trabajo y contratos', 'to apply for', 'solicitar(un puesto)'),
 (21, 'Trabajo y contratos', 'application', 'solicitud'),
 (21, 'Trabajo y contratos', 'applicant', 'candidato'),
 (21, 'Búsqueda de empleo y profesiones', 'CV/resume', 'currículum'),

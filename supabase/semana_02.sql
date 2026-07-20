@@ -1,4 +1,4 @@
--- SEMANA 2 · Familia y descripción de personas · 42 palabras
+-- SEMANA 2 · Familia y descripción de personas · 62 palabras
 insert into words (week, section, en, es) values
 (2, 'Familia', 'mother', 'madre'),
 (2, 'Familia', 'father', 'padre'),
@@ -41,4 +41,24 @@ insert into words (week, section, en, es) values
 (2, 'Descripción física', 'dark-haired', 'moreno'),
 (2, 'Descripción física', 'curly', 'rizado'),
 (2, 'Descripción física', 'straight (hair)', 'liso'),
-(2, 'Descripción física', 'beard', 'barba');
+(2, 'Descripción física', 'beard', 'barba'),
+(2, 'Descripción física', 'glasses', 'gafas'),
+(2, 'Personalidad y estado de ánimo', 'kind', 'amable'),
+(2, 'Personalidad y estado de ánimo', 'friendly', 'simpático'),
+(2, 'Personalidad y estado de ánimo', 'funny', 'gracioso'),
+(2, 'Personalidad y estado de ánimo', 'serious', 'serio'),
+(2, 'Personalidad y estado de ánimo', 'shy', 'tímido'),
+(2, 'Personalidad y estado de ánimo', 'intelligent', 'inteligente'),
+(2, 'Personalidad y estado de ánimo', 'lazy', 'perezoso'),
+(2, 'Personalidad y estado de ánimo', 'hard-working', 'trabajador'),
+(2, 'Personalidad y estado de ánimo', 'happy', 'feliz'),
+(2, 'Personalidad y estado de ánimo', 'sad', 'triste'),
+(2, 'Personalidad y estado de ánimo', 'angry', 'enfadado'),
+(2, 'Personalidad y estado de ánimo', 'tired', 'cansado'),
+(2, 'Familia', 'married', 'casado'),
+(2, 'Familia', 'single', 'soltero'),
+(2, 'Familia', 'divorced', 'divorciado'),
+(2, 'Familia', 'twin', 'gemelo'),
+(2, 'Familia', 'to look like', 'parecerse a'),
+(2, 'Familia', 'family', 'familia'),
+(2, 'Familia', 'relative', 'pariente');

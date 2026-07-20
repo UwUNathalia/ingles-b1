@@ -1,6 +1,4 @@
--- SEMANA 30 · Conectores y expresiones B1 (repaso final) · 68 palabras
--- Nota: el título original decía "70 palabras"; transcribiendo la tabla con cuidado
--- solo conté 68. Si tienes el listado en texto plano, dime y reviso las que falten.
+-- SEMANA 30 · Conectores y expresiones B1 (repaso final) · 70 palabras
 insert into words (week, section, en, es) values
 (30, 'Contraste y causa', 'although', 'aunque'),
 (30, 'Contraste y causa', 'even though', 'aunque (enfático)'),
@@ -35,6 +33,7 @@ insert into words (week, section, en, es) values
 (30, 'Precisión y estructura', 'mainly', 'principalmente'),
 (30, 'Precisión y estructura', 'mostly', 'mayormente'),
 (30, 'Precisión y estructura', 'according to', 'según'),
+(30, 'Precisión y estructura', 'as far as i know', 'que yo sepa'),
 (30, 'Precisión y estructura', 'as for', 'en cuanto a'),
 (30, 'Precisión y estructura', 'regarding', 'con respecto a'),
 (30, 'Precisión y estructura', 'in terms of', 'en términos de'),
@@ -47,6 +46,7 @@ insert into words (week, section, en, es) values
 (30, 'Precisión y estructura', 'lastly', 'por último'),
 (30, 'Precisión y estructura', 'afterwards', 'después/posteriormente'),
 (30, 'Precisión y estructura', 'eventually', 'finalmente (con el tiempo)'),
+(30, 'Precisión y estructura', 'immediately', 'inmediatamente'),
 (30, 'Precisión y estructura', 'as soon as', 'tan pronto como'),
 (30, 'Expresiones finales B1', 'whenever', 'cuando sea/siempre que'),
 (30, 'Expresiones finales B1', 'wherever', 'donde sea'),

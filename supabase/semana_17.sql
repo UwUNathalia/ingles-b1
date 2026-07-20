@@ -1,6 +1,4 @@
--- SEMANA 17 · Tecnología y el futuro · 71 palabras
--- Nota: el título original decía "72 palabras"; transcribiendo la tabla con cuidado
--- solo conté 71. Si tienes el listado en texto plano, dime y reviso la que falte.
+-- SEMANA 17 · Tecnología y el futuro · 72 palabras
 insert into words (week, section, en, es) values
 (17, 'Dispositivos y hardware', 'technology', 'tecnología'),
 (17, 'Dispositivos y hardware', 'computer', 'ordenador/computadora'),
@@ -20,6 +18,7 @@ insert into words (week, section, en, es) values
 (17, 'Dispositivos y hardware', 'folder', 'carpeta'),
 (17, 'Dispositivos y hardware', 'document', 'documento'),
 (17, 'Dispositivos y hardware', 'to download', 'descargar'),
+(17, 'Dispositivos y hardware', 'to install', 'instalar'),
 (17, 'Dispositivos y hardware', 'app', 'aplicación'),
 (17, 'Dispositivos y hardware', 'software', 'software'),
 (17, 'Dispositivos y hardware', 'program', 'programa'),
@@ -67,7 +66,7 @@ insert into words (week, section, en, es) values
 (17, 'Conexión, IA y datos', 'gadget', 'aparato'),
 (17, 'Conexión, IA y datos', 'useful', 'útil'),
 (17, 'Conexión, IA y datos', 'useless', 'inútil'),
-(17, 'Conexión, IA y datos', 'modem', 'módem'),
+(17, 'Conexión, IA y datos', 'modern', 'moderno'),
 (17, 'Conexión, IA y datos', 'digital', 'digital'),
 (17, 'Conexión, IA y datos', 'data', 'datos'),
 (17, 'Conexión, IA y datos', 'to type', 'teclear'),

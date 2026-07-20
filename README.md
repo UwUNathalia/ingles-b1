@@ -12,7 +12,7 @@ entre ambos.
 4. Pega el contenido de [`supabase/schema.sql`](supabase/schema.sql) y dale **Run**.
 5. Repite **New query** → pegar → **Run** con cada archivo `supabase/semana_NN.sql`, uno por
    uno, del `semana_01.sql` al `semana_30.sql` (están todos en la carpeta [`supabase/`](supabase)).
-   (Esto carga las 1974 palabras de las semanas 1 a 30, el curso B1 completo).
+   (Esto carga las 2000 palabras de las semanas 1 a 30, el curso B1 completo).
 6. Ve a **Authentication → Providers** y confirma que **Email** esté habilitado
    (viene habilitado por defecto). No hace falta contraseña: usamos "enlace mágico".
 7. Ve a **Authentication → URL Configuration** y en **Redirect URLs** agrega la URL donde

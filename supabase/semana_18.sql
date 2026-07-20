@@ -1,6 +1,4 @@
--- SEMANA 18 · Citas, eventos e invitaciones · 69 palabras
--- Nota: el título original decía "70 palabras"; transcribiendo la tabla con cuidado
--- solo conté 69. Si tienes el listado en texto plano, dime y reviso la que falte.
+-- SEMANA 18 · Citas, eventos e invitaciones · 70 palabras
 insert into words (week, section, en, es) values
 (18, 'Invitaciones y llegar a tiempo', 'invitation', 'invitación'),
 (18, 'Invitaciones y llegar a tiempo', 'celebration', 'celebración'),
@@ -17,6 +15,7 @@ insert into words (week, section, en, es) values
 (18, 'Invitaciones y llegar a tiempo', 'to join', 'unirse'),
 (18, 'Invitaciones y llegar a tiempo', 'to come along', 'acompañar'),
 (18, 'Invitaciones y llegar a tiempo', 'to bring', 'traer'),
+(18, 'Invitaciones y llegar a tiempo', 'to take (someone)', 'llevar(a alguien)'),
 (18, 'Invitaciones y llegar a tiempo', 'to accept', 'aceptar'),
 (18, 'Invitaciones y llegar a tiempo', 'to refuse', 'rechazar'),
 (18, 'Invitaciones y llegar a tiempo', 'to turn down', 'rechazar (una oferta)'),
