@@ -10,8 +10,11 @@ entre ambos.
 2. Crea un **New project** (elige cualquier nombre y contraseña de base de datos, guárdala).
 3. Cuando el proyecto esté listo, ve a **SQL Editor** (menú izquierdo) → **New query**.
 4. Pega el contenido de [`supabase/schema.sql`](supabase/schema.sql) y dale **Run**.
-5. Abre otra **New query**, pega el contenido de [`supabase/semana_01.sql`](supabase/semana_01.sql) y dale **Run**.
-   (Esto carga las 62 palabras de la Semana 1).
+5. Repite **New query** → pegar → **Run** con cada uno de estos archivos, uno por uno:
+   [`semana_01.sql`](supabase/semana_01.sql), [`semana_02.sql`](supabase/semana_02.sql),
+   [`semana_03.sql`](supabase/semana_03.sql), [`semana_04.sql`](supabase/semana_04.sql),
+   [`semana_05.sql`](supabase/semana_05.sql), [`semana_06.sql`](supabase/semana_06.sql).
+   (Esto carga las 351 palabras de las semanas 1 a 6).
 6. Ve a **Authentication → Providers** y confirma que **Email** esté habilitado
    (viene habilitado por defecto). No hace falta contraseña: usamos "enlace mágico".
 7. Ve a **Authentication → URL Configuration** y en **Redirect URLs** agrega la URL donde
@@ -66,18 +69,37 @@ guardada.
 ## 5. Agregar una semana nueva
 
 Cuando tengas la siguiente lista de palabras, pásamela y te genero un archivo
-`supabase/semana_NN.sql` como el de la Semana 1. Solo tienes que pegarlo en el
+`supabase/semana_NN.sql` como los anteriores. Solo tienes que pegarlo en el
 **SQL Editor** de Supabase y darle Run — no hay que tocar el código ni volver a publicar
-nada. La semana nueva aparece sola en la pantalla principal de la app.
+nada. La semana nueva aparece sola como una carpeta más en la pantalla principal.
+
+## Cómo elegir qué estudiar
+
+La pantalla principal es "Inglés B1" con una carpeta por semana. Puedes:
+
+- Tocar **Repasar pendientes ahora** para una sesión automática con todo lo que toca
+  repasar hoy (mezclando todas las semanas), sin elegir nada a mano.
+- Marcar los checkboxes para elegir tarjetas sueltas, secciones enteras (el checkbox del
+  encabezado de cada tema) o semanas completas (el checkbox de la carpeta), igual que en
+  Google Drive. Arriba hay un botón **Seleccionar todo / Deseleccionar todo**, y en cuanto
+  eliges algo aparece abajo una barra con **Comenzar con estas**.
+- Entrar a una carpeta de semana para ver sus tarjetas agrupadas por tema, con un badge
+  que indica si cada una es "nueva", está "pendiente" o "en cuánto tiempo" vuelve a
+  aparecer.
 
 ## Cómo funciona el repaso
 
-Cada ficha muestra la palabra en inglés; al tocarla se voltea y muestra la traducción.
-Luego eliges:
+Cada ficha muestra la palabra en inglés; al tocarla se voltea y muestra la traducción,
+junto con 4 botones (igual que Anki), cada uno mostrando cuánto falta para que la
+tarjeta vuelva a aparecer:
 
-- **Otra vez**: no te la sabías, vuelve a aparecer en la misma sesión y mañana.
-- **Bien**: la recordaste, vuelve en unos días.
-- **Fácil**: la sabes muy bien, vuelve en más tiempo.
+- **Otra vez**: no te la sabías → vuelve en **1 minuto**.
+- **Difícil**: te costó → vuelve en **6 minutos**.
+- **Bien**: la recordaste → la primera vez vuelve en **10 minutos**; la siguiente vez que
+  la aciertes con "Bien" ya pasa a repasos por días, creciendo cada vez más (repetición
+  espaciada, como en Anki).
+- **Fácil**: la sabes muy bien → salta directo a **~5 días**.
 
-El intervalo crece automáticamente cada vez que la aciertas (repetición espaciada,
-igual que Anki), así que las palabras que ya dominas aparecen cada vez menos.
+Si prefieres que "Bien" no pase nunca a días y se quede fijo en minutos, o quieres
+cambiar alguno de estos tiempos, dime y lo ajusto en `nextState()` dentro de
+[`app.js`](app.js).

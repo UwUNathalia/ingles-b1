@@ -6,18 +6,21 @@ const app = document.getElementById("app");
 
 const NEW_CARDS_PER_SESSION = 20;
 const MASTERED_INTERVAL_DAYS = 21;
+const MINUTE = 60 * 1000;
+const DAY = 24 * 60 * MINUTE;
+
+const state = {
+  session: null,
+  words: [], // todas las palabras con su progreso, cargadas una vez por sesión
+  selection: new Set(), // ids de palabras elegidas manualmente
+};
 
 // ---------- helpers ----------
 
-function todayStr() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function addDaysStr(days) {
-  const d = new Date();
-  d.setDate(d.getDate() + Math.max(days, 0));
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
 }
 
 function shuffle(arr) {
@@ -29,36 +32,68 @@ function shuffle(arr) {
   return a;
 }
 
-function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
-  }[c]));
+function humanizeDelta(ms) {
+  const min = Math.round(ms / MINUTE);
+  if (min < 60) return `${Math.max(min, 1)} min`;
+  const hours = Math.round(ms / (60 * MINUTE));
+  if (hours < 24) return `${hours} h`;
+  const days = Math.round(ms / DAY);
+  return `${days} d`;
 }
 
-// SM-2 simplificado. quality: 0 = otra vez, 4 = bien, 5 = fácil
-function nextState(prog, quality) {
+function dueBadge(word, now) {
+  if (!word.progress) return { text: "nueva", cls: "is-new" };
+  const due = new Date(word.progress.due_at);
+  if (due <= now) return { text: "pendiente", cls: "is-due" };
+  return { text: `en ${humanizeDelta(due - now)}`, cls: "" };
+}
+
+// Repaso de 4 botones: Otra vez / Difícil / Bien / Fácil.
+// 'new' y 'step1' son pasos de aprendizaje en minutos; 'review' crece por días (estilo SM-2).
+function nextState(prog, answer) {
+  const stage = prog?.stage ?? "new";
   let ease = prog?.ease ?? 2.5;
   let interval_days = prog?.interval_days ?? 0;
-  let repetitions = prog?.repetitions ?? 0;
+  let newStage;
+  let dueMs;
 
-  if (quality < 3) {
-    repetitions = 0;
-    interval_days = 0;
+  if (stage === "review") {
+    if (answer === "again") {
+      newStage = "step1"; dueMs = 1 * MINUTE; ease = Math.max(1.3, ease - 0.2); interval_days = 0;
+    } else if (answer === "hard") {
+      newStage = "review"; interval_days = Math.max(1, Math.round(interval_days * 1.2));
+      ease = Math.max(1.3, ease - 0.15); dueMs = interval_days * DAY;
+    } else if (answer === "good") {
+      newStage = "review"; interval_days = Math.max(1, Math.round(interval_days * ease)); dueMs = interval_days * DAY;
+    } else {
+      newStage = "review"; interval_days = Math.max(1, Math.round(interval_days * ease * 1.3));
+      ease = ease + 0.15; dueMs = interval_days * DAY;
+    }
   } else {
-    if (repetitions === 0) interval_days = 1;
-    else if (repetitions === 1) interval_days = 6;
-    else interval_days = Math.round(interval_days * ease);
-    repetitions += 1;
-    ease = Math.max(1.3, ease + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)));
+    if (answer === "again") {
+      newStage = "step1"; dueMs = 1 * MINUTE;
+    } else if (answer === "hard") {
+      newStage = "step1"; dueMs = 6 * MINUTE;
+    } else if (answer === "good") {
+      if (stage === "step1") { newStage = "review"; interval_days = 1; dueMs = 1 * DAY; }
+      else { newStage = "step1"; dueMs = 10 * MINUTE; }
+    } else {
+      newStage = "review"; interval_days = 5; dueMs = 5 * DAY;
+    }
   }
 
   return {
+    stage: newStage,
     ease,
     interval_days,
-    repetitions,
-    due_date: addDaysStr(interval_days),
+    due_at: new Date(Date.now() + dueMs).toISOString(),
     last_reviewed: new Date().toISOString(),
   };
+}
+
+function previewLabel(prog, answer) {
+  const result = nextState(prog, answer);
+  return humanizeDelta(new Date(result.due_at).getTime() - Date.now());
 }
 
 // ---------- data ----------
@@ -66,24 +101,47 @@ function nextState(prog, quality) {
 async function fetchWordsWithProgress() {
   const { data, error } = await supabase
     .from("words")
-    .select("id, week, section, en, es, progress(id, ease, interval_days, repetitions, due_date)")
+    .select("id, week, section, en, es, progress(id, stage, ease, interval_days, due_at)")
     .order("week", { ascending: true })
     .order("id", { ascending: true });
   if (error) throw error;
   return data.map((w) => ({ ...w, progress: w.progress?.[0] ?? null }));
 }
 
-async function saveProgress(userId, wordId, state) {
+async function saveProgress(userId, wordId, newState) {
   const { error } = await supabase
     .from("progress")
-    .upsert(
-      { user_id: userId, word_id: wordId, ...state },
-      { onConflict: "user_id,word_id" }
-    );
+    .upsert({ user_id: userId, word_id: wordId, ...newState }, { onConflict: "user_id,word_id" });
   if (error) throw error;
 }
 
-// ---------- screens ----------
+// ---------- selección (estilo Drive) ----------
+
+function selectionBarHtml() {
+  if (state.selection.size === 0) return "";
+  return `
+    <div class="selection-bar">
+      <span class="count">${state.selection.size} seleccionada${state.selection.size === 1 ? "" : "s"}</span>
+      <div class="actions">
+        <button class="link" id="clear-selection-btn">Vaciar</button>
+        <button class="primary" id="start-selection-btn">Comenzar con estas</button>
+      </div>
+    </div>
+  `;
+}
+
+function attachSelectionBarHandlers(rerender) {
+  document.getElementById("clear-selection-btn")?.addEventListener("click", () => {
+    state.selection.clear();
+    rerender();
+  });
+  document.getElementById("start-selection-btn")?.addEventListener("click", () => {
+    const cards = state.words.filter((w) => state.selection.has(w.id));
+    startStudySession(cards, { label: `${cards.length} seleccionadas`, onExit: rerender });
+  });
+}
+
+// ---------- pantallas ----------
 
 function renderLoading() {
   app.innerHTML = `<p style="text-align:center; color: var(--muted); margin-top: 40px;">Cargando…</p>`;
@@ -118,41 +176,52 @@ function renderAuth() {
   });
 }
 
-async function renderHome(session) {
+async function loadRoot() {
   renderLoading();
-  let words;
   try {
-    words = await fetchWordsWithProgress();
+    state.words = await fetchWordsWithProgress();
   } catch (err) {
     app.innerHTML = `<p style="color:var(--again); text-align:center;">Error cargando palabras: ${escapeHtml(err.message)}</p>`;
     return;
   }
+  drawRoot();
+}
 
-  const today = todayStr();
+function groupByWeek() {
   const byWeek = new Map();
-  for (const w of words) {
+  for (const w of state.words) {
     if (!byWeek.has(w.week)) byWeek.set(w.week, []);
     byWeek.get(w.week).push(w);
   }
+  return byWeek;
+}
 
-  const weekCards = [...byWeek.keys()]
-    .sort((a, b) => a - b)
+function drawRoot() {
+  const now = new Date();
+  const byWeek = groupByWeek();
+  const weeks = [...byWeek.keys()].sort((a, b) => a - b);
+
+  const dueReview = state.words.filter((w) => w.progress && new Date(w.progress.due_at) <= now);
+  const dueNew = shuffle(state.words.filter((w) => !w.progress)).slice(0, NEW_CARDS_PER_SESSION);
+  const autoQueue = shuffle([...dueReview, ...dueNew]);
+
+  const allSelected = state.words.length > 0 && state.words.every((w) => state.selection.has(w.id));
+
+  const weekRows = weeks
     .map((week) => {
       const list = byWeek.get(week);
       const total = list.length;
-      const due = list.filter((w) => !w.progress || w.progress.due_date <= today).length;
-      const mastered = list.filter((w) => w.progress && w.progress.interval_days >= MASTERED_INTERVAL_DAYS).length;
-      const pct = Math.round((mastered / total) * 100);
+      const selectedCount = list.filter((w) => state.selection.has(w.id)).length;
+      const due = list.filter((w) => !w.progress || new Date(w.progress.due_at) <= now).length;
+      const mastered = list.filter((w) => w.progress?.stage === "review" && w.progress.interval_days >= MASTERED_INTERVAL_DAYS).length;
       return `
-        <div class="week-card" data-week="${week}">
-          <div>
-            <div class="title">Semana ${week}</div>
-            <div class="subtitle">${total} palabras · ${mastered} dominadas</div>
-            <div class="progress-bar-track" style="width:180px;">
-              <div class="progress-bar-fill" style="width:${pct}%;"></div>
-            </div>
+        <div class="folder-row" data-week="${week}">
+          <input type="checkbox" data-week-checkbox="${week}" ${selectedCount === total && total > 0 ? "checked" : ""} />
+          <div class="row-main">
+            <div class="title">📁 Semana ${week}</div>
+            <div class="subtitle">${total} palabras · ${mastered} dominadas${due > 0 ? ` · ${due} pendientes` : ""}</div>
           </div>
-          <div class="badge">${due > 0 ? `${due} para hoy` : "al día"}</div>
+          <span class="chevron">›</span>
         </div>
       `;
     })
@@ -160,48 +229,183 @@ async function renderHome(session) {
 
   app.innerHTML = `
     <header class="topbar">
-      <div class="logo"><h1>Inglés B1</h1></div>
-      <div class="top-actions">
-        <button class="link" id="logout-btn">Salir</button>
-      </div>
+      <h1>Inglés B1</h1>
+      <button class="link" id="logout-btn">Salir</button>
     </header>
-    <div class="week-list">
-      ${weekCards || `<p style="color:var(--muted);">Todavía no hay palabras cargadas.</p>`}
+    <button class="primary quick-action-row" id="auto-review-btn" ${autoQueue.length === 0 ? "disabled" : ""}>
+      <span>Repasar pendientes ahora</span>
+      <span>${autoQueue.length}</span>
+    </button>
+    <div class="select-bar">
+      <span style="color:var(--muted); font-size:0.85rem;">Elegir tarjetas manualmente</span>
+      <button class="ghost" id="select-all-btn">${allSelected ? "Deseleccionar todo" : "Seleccionar todo"}</button>
     </div>
-    <footer class="small-print">${session.user.email}</footer>
+    <div class="week-list">${weekRows || `<p style="color:var(--muted);">No hay palabras cargadas.</p>`}</div>
+    ${selectionBarHtml()}
+    <footer class="small-print">${state.session.user.email}</footer>
   `;
 
+  document.querySelectorAll("[data-week-checkbox]").forEach((cb) => {
+    const week = Number(cb.dataset.weekCheckbox);
+    const list = byWeek.get(week);
+    const selectedCount = list.filter((w) => state.selection.has(w.id)).length;
+    cb.indeterminate = selectedCount > 0 && selectedCount < list.length;
+  });
+
   document.getElementById("logout-btn").addEventListener("click", () => supabase.auth.signOut());
-  document.querySelectorAll(".week-card").forEach((el) => {
-    el.addEventListener("click", () => {
-      const week = Number(el.dataset.week);
-      startStudySession(session, byWeek.get(week), week);
+  document.getElementById("auto-review-btn").addEventListener("click", () => {
+    startStudySession(autoQueue, { label: "Repaso de hoy", onExit: drawRoot });
+  });
+  document.getElementById("select-all-btn").addEventListener("click", () => {
+    if (allSelected) state.selection.clear();
+    else state.words.forEach((w) => state.selection.add(w.id));
+    drawRoot();
+  });
+  document.querySelectorAll("[data-week-checkbox]").forEach((cb) => {
+    cb.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const week = Number(cb.dataset.weekCheckbox);
+      const list = byWeek.get(week);
+      const allIn = list.every((w) => state.selection.has(w.id));
+      list.forEach((w) => (allIn ? state.selection.delete(w.id) : state.selection.add(w.id)));
+      drawRoot();
     });
   });
+  document.querySelectorAll(".folder-row").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.matches('input[type="checkbox"]')) return;
+      drawWeek(Number(row.dataset.week));
+    });
+  });
+  attachSelectionBarHandlers(drawRoot);
 }
 
-function startStudySession(session, weekWords, week) {
-  const today = todayStr();
-  const dueCards = weekWords.filter((w) => w.progress && w.progress.due_date <= today);
-  const newCards = shuffle(weekWords.filter((w) => !w.progress)).slice(0, NEW_CARDS_PER_SESSION);
-  let queue = shuffle([...dueCards, ...newCards]);
+function drawWeek(week) {
+  const now = new Date();
+  const list = state.words.filter((w) => w.week === week).sort((a, b) => a.id - b.id);
+  const bySection = new Map();
+  for (const w of list) {
+    if (!bySection.has(w.section)) bySection.set(w.section, []);
+    bySection.get(w.section).push(w);
+  }
 
-  const stats = { reviewed: 0, again: 0, good: 0, easy: 0, total: queue.length };
+  const dueList = list.filter((w) => !w.progress || new Date(w.progress.due_at) <= now);
+  const allSelected = list.length > 0 && list.every((w) => state.selection.has(w.id));
 
+  const sectionsHtml = [...bySection.entries()]
+    .map(([section, words]) => {
+      const selectedCount = words.filter((w) => state.selection.has(w.id)).length;
+      const rows = words
+        .map((w) => {
+          const badge = dueBadge(w, now);
+          const checked = state.selection.has(w.id);
+          return `
+            <div class="word-row" data-id="${w.id}">
+              <input type="checkbox" data-word-checkbox="${w.id}" ${checked ? "checked" : ""} />
+              <div class="row-main">
+                <span class="en">${escapeHtml(w.en)}</span>
+                <span class="es">${escapeHtml(w.es)}</span>
+              </div>
+              <span class="due-badge ${badge.cls}">${badge.text}</span>
+            </div>
+          `;
+        })
+        .join("");
+      return `
+        <div class="section-header">
+          <input type="checkbox" data-section-checkbox="${escapeHtml(section)}" ${selectedCount === words.length ? "checked" : ""} />
+          <span class="label">${escapeHtml(section)} (${words.length})</span>
+        </div>
+        ${rows}
+      `;
+    })
+    .join("");
+
+  app.innerHTML = `
+    <div class="breadcrumb">
+      <button class="link" id="back-to-root">‹ B1</button>
+      <span>/ Semana ${week}</span>
+    </div>
+    <button class="primary quick-action-row" id="week-review-btn" ${dueList.length === 0 ? "disabled" : ""}>
+      <span>Repasar pendientes de esta semana</span>
+      <span>${dueList.length}</span>
+    </button>
+    <div class="select-bar">
+      <span style="color:var(--muted); font-size:0.85rem;">${list.length} palabras</span>
+      <button class="ghost" id="select-all-week-btn">${allSelected ? "Deseleccionar todo" : "Seleccionar todo"}</button>
+    </div>
+    ${sectionsHtml}
+    ${selectionBarHtml()}
+  `;
+
+  document.querySelectorAll("[data-section-checkbox]").forEach((cb) => {
+    const words = bySection.get(cb.dataset.sectionCheckbox);
+    const selectedCount = words.filter((w) => state.selection.has(w.id)).length;
+    cb.indeterminate = selectedCount > 0 && selectedCount < words.length;
+  });
+
+  document.getElementById("back-to-root").addEventListener("click", drawRoot);
+  document.getElementById("week-review-btn").addEventListener("click", () => {
+    startStudySession(shuffle(dueList), { label: `Semana ${week} · pendientes`, onExit: () => drawWeek(week) });
+  });
+  document.getElementById("select-all-week-btn").addEventListener("click", () => {
+    if (allSelected) list.forEach((w) => state.selection.delete(w.id));
+    else list.forEach((w) => state.selection.add(w.id));
+    drawWeek(week);
+  });
+  document.querySelectorAll("[data-section-checkbox]").forEach((cb) => {
+    cb.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const words = bySection.get(cb.dataset.sectionCheckbox);
+      const allIn = words.every((w) => state.selection.has(w.id));
+      words.forEach((w) => (allIn ? state.selection.delete(w.id) : state.selection.add(w.id)));
+      drawWeek(week);
+    });
+  });
+  document.querySelectorAll(".word-row").forEach((row) => {
+    row.addEventListener("click", (e) => {
+      if (e.target.matches('input[type="checkbox"]')) return;
+      const id = Number(row.dataset.id);
+      if (state.selection.has(id)) state.selection.delete(id);
+      else state.selection.add(id);
+      drawWeek(week);
+    });
+  });
+  attachSelectionBarHandlers(() => drawWeek(week));
+}
+
+const ANSWERS = [
+  { key: "again", label: "Otra vez", cls: "btn-again" },
+  { key: "hard", label: "Difícil", cls: "btn-hard" },
+  { key: "good", label: "Bien", cls: "btn-good" },
+  { key: "easy", label: "Fácil", cls: "btn-easy" },
+];
+
+function startStudySession(cards, { label, onExit }) {
+  const queue = shuffle(cards);
   if (queue.length === 0) {
-    renderAllCaughtUp(session, week);
+    app.innerHTML = `
+      <div class="center-screen">
+        <div class="card" style="text-align:center;">
+          <div class="summary-emoji">✅</div>
+          <h2>Nada por aquí</h2>
+          <p style="color:var(--muted);">No hay tarjetas para "${escapeHtml(label)}".</p>
+          <button class="primary" id="back-btn">Volver</button>
+        </div>
+      </div>
+    `;
+    document.getElementById("back-btn").addEventListener("click", onExit);
     return;
   }
 
-  renderStudyCard();
+  const stats = { reviewed: 0, again: 0, hard: 0, good: 0, easy: 0 };
 
-  function renderStudyCard() {
+  function paint() {
     const card = queue[0];
-    const remaining = queue.length;
     app.innerHTML = `
       <div class="study-header">
-        <button class="link" id="exit-btn">← Semanas</button>
-        <span>Semana ${week} · quedan ${remaining}</span>
+        <button class="link" id="exit-btn">← Salir</button>
+        <span>${escapeHtml(label)} · quedan ${queue.length}</span>
       </div>
       <div class="flip-hint-row">Toca la ficha para ver la respuesta</div>
       <div class="flashcard-wrap">
@@ -212,80 +416,83 @@ function startStudySession(session, weekWords, week) {
       </div>
       <div id="answer-area"></div>
     `;
-    document.getElementById("exit-btn").addEventListener("click", () => renderHome(session));
-    document.getElementById("flashcard").addEventListener("click", flipCard);
+    document.getElementById("exit-btn").addEventListener("click", onExit);
+    document.getElementById("flashcard").addEventListener("click", flip);
   }
 
-  function flipCard() {
+  function flip() {
     const card = queue[0];
     document.getElementById("card-front").outerHTML = `<div class="translation" id="card-front">${escapeHtml(card.es)}</div>`;
     document.getElementById("answer-area").innerHTML = `
       <div class="answer-buttons">
-        <button class="btn-again" data-q="0">Otra vez</button>
-        <button class="btn-good" data-q="4">Bien</button>
-        <button class="btn-easy" data-q="5">Fácil</button>
+        ${ANSWERS.map(
+          (a) => `
+          <button class="${a.cls}" data-answer="${a.key}">
+            <span>${a.label}</span>
+            <span class="interval">${previewLabel(card.progress, a.key)}</span>
+          </button>
+        `
+        ).join("")}
       </div>
     `;
-    document.getElementById("flashcard").removeEventListener("click", flipCard);
-    document.querySelectorAll("[data-q]").forEach((btn) => {
-      btn.addEventListener("click", () => answer(Number(btn.dataset.q)));
+    document.getElementById("flashcard").removeEventListener("click", flip);
+    document.querySelectorAll("[data-answer]").forEach((btn) => {
+      btn.addEventListener("click", () => answer(btn.dataset.answer));
     });
   }
 
-  async function answer(quality) {
+  function answer(key) {
     const card = queue.shift();
-    const state = nextState(card.progress, quality);
-    card.progress = { ...card.progress, ...state };
+    const newState = nextState(card.progress, key);
+    card.progress = { ...(card.progress || {}), ...newState };
     stats.reviewed += 1;
-    if (quality < 3) { stats.again += 1; queue.splice(Math.min(3, queue.length), 0, card); }
-    else if (quality === 4) stats.good += 1;
-    else stats.easy += 1;
+    stats[key] += 1;
+    if (key === "again") queue.splice(Math.min(3, queue.length), 0, card);
 
-    saveProgress(session.user.id, card.id, state).catch((err) => console.error("No se pudo guardar el progreso:", err));
+    saveProgress(state.session.user.id, card.id, newState).catch((err) =>
+      console.error("No se pudo guardar el progreso:", err)
+    );
 
-    if (queue.length === 0) renderSummary(session, week, stats);
-    else renderStudyCard();
+    if (queue.length === 0) renderSummary();
+    else paint();
   }
-}
 
-function renderAllCaughtUp(session, week) {
-  app.innerHTML = `
-    <div class="center-screen">
-      <div class="card" style="text-align:center;">
-        <div class="summary-emoji">✅</div>
-        <h2>¡Al día!</h2>
-        <p style="color:var(--muted);">No hay tarjetas pendientes en la Semana ${week} por ahora.</p>
-        <button class="primary" id="back-btn">Volver a Semanas</button>
+  function renderSummary() {
+    app.innerHTML = `
+      <div class="center-screen">
+        <div class="card" style="text-align:center;">
+          <div class="summary-emoji">🎉</div>
+          <h2>Sesión completa</h2>
+          <p style="color:var(--muted);">${escapeHtml(label)} · ${stats.reviewed} tarjetas repasadas</p>
+          <p style="color:var(--muted); font-size:0.9rem;">
+            Otra vez: ${stats.again} · Difícil: ${stats.hard} · Bien: ${stats.good} · Fácil: ${stats.easy}
+          </p>
+          <button class="primary" id="back-btn">Volver</button>
+        </div>
       </div>
-    </div>
-  `;
-  document.getElementById("back-btn").addEventListener("click", () => renderHome(session));
-}
+    `;
+    document.getElementById("back-btn").addEventListener("click", onExit);
+  }
 
-function renderSummary(session, week, stats) {
-  app.innerHTML = `
-    <div class="center-screen">
-      <div class="card" style="text-align:center;">
-        <div class="summary-emoji">🎉</div>
-        <h2>Sesión completa</h2>
-        <p style="color:var(--muted);">Semana ${week} · ${stats.reviewed} tarjetas repasadas</p>
-        <p style="color:var(--muted); font-size:0.9rem;">Otra vez: ${stats.again} · Bien: ${stats.good} · Fácil: ${stats.easy}</p>
-        <button class="primary" id="back-btn">Volver a Semanas</button>
-      </div>
-    </div>
-  `;
-  document.getElementById("back-btn").addEventListener("click", () => renderHome(session));
+  paint();
 }
 
 // ---------- boot ----------
 
 renderLoading();
 
-supabase.auth.onAuthStateChange((_event, session) => {
-  if (session) renderHome(session);
+// TOKEN_REFRESHED se dispara cada ~hora sin cambiar de usuario: solo refrescamos
+// el objeto de sesión (para que saveProgress siga autenticado) sin redibujar nada,
+// para no interrumpir una sesión de estudio o borrar la selección en curso.
+supabase.auth.onAuthStateChange((event, session) => {
+  state.session = session;
+  if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
+  state.selection.clear();
+  if (session) loadRoot();
   else renderAuth();
 });
 
-const { data: { session } } = await supabase.auth.getSession();
-if (session) renderHome(session);
+const { data: { session: initialSession } } = await supabase.auth.getSession();
+state.session = initialSession;
+if (initialSession) loadRoot();
 else renderAuth();

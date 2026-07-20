@@ -11,15 +11,16 @@ create table if not exists words (
   created_at timestamptz not null default now()
 );
 
--- Tabla de progreso por usuario (algoritmo estilo SM-2 / Anki)
+-- Tabla de progreso por usuario (algoritmo estilo SM-2 / Anki, con pasos en minutos)
+-- stage: 'new' (nunca repasada) -> 'step1' (aprendiendo, minutos) -> 'review' (repaso por días)
 create table if not exists progress (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users(id) on delete cascade,
   word_id bigint not null references words(id) on delete cascade,
+  stage text not null default 'new',
   ease numeric not null default 2.5,
   interval_days numeric not null default 0,
-  repetitions int not null default 0,
-  due_date date not null default current_date,
+  due_at timestamptz not null default now(),
   last_reviewed timestamptz,
   unique (user_id, word_id)
 );
