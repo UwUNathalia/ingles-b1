@@ -10,11 +10,9 @@ entre ambos.
 2. Crea un **New project** (elige cualquier nombre y contraseña de base de datos, guárdala).
 3. Cuando el proyecto esté listo, ve a **SQL Editor** (menú izquierdo) → **New query**.
 4. Pega el contenido de [`supabase/schema.sql`](supabase/schema.sql) y dale **Run**.
-5. Repite **New query** → pegar → **Run** con cada uno de estos archivos, uno por uno:
-   [`semana_01.sql`](supabase/semana_01.sql), [`semana_02.sql`](supabase/semana_02.sql),
-   [`semana_03.sql`](supabase/semana_03.sql), [`semana_04.sql`](supabase/semana_04.sql),
-   [`semana_05.sql`](supabase/semana_05.sql), [`semana_06.sql`](supabase/semana_06.sql).
-   (Esto carga las 351 palabras de las semanas 1 a 6).
+5. Repite **New query** → pegar → **Run** con cada archivo `supabase/semana_NN.sql`, uno por
+   uno, del `semana_01.sql` al `semana_21.sql` (están todos en la carpeta [`supabase/`](supabase)).
+   (Esto carga las 1336 palabras de las semanas 1 a 21).
 6. Ve a **Authentication → Providers** y confirma que **Email** esté habilitado
    (viene habilitado por defecto). No hace falta contraseña: usamos "enlace mágico".
 7. Ve a **Authentication → URL Configuration** y en **Redirect URLs** agrega la URL donde
