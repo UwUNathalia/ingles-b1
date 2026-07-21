@@ -99,13 +99,24 @@ function previewLabel(prog, answer) {
 // ---------- data ----------
 
 async function fetchWordsWithProgress() {
-  const { data, error } = await supabase
-    .from("words")
-    .select("id, week, section, en, es, progress(id, stage, ease, interval_days, due_at)")
-    .order("week", { ascending: true })
-    .order("id", { ascending: true });
-  if (error) throw error;
-  return data.map((w) => ({ ...w, progress: w.progress?.[0] ?? null }));
+  // Supabase corta cada consulta a 1000 filas por defecto, y el curso ya tiene
+  // 2000 palabras: paginamos con .range() hasta traerlas todas.
+  const pageSize = 1000;
+  let rows = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await supabase
+      .from("words")
+      .select("id, week, section, en, es, progress(id, stage, ease, interval_days, due_at)")
+      .order("week", { ascending: true })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    rows = rows.concat(data);
+    if (data.length < pageSize) break;
+    from += pageSize;
+  }
+  return rows.map((w) => ({ ...w, progress: w.progress?.[0] ?? null }));
 }
 
 async function saveProgress(userId, wordId, newState) {
