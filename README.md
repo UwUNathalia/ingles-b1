@@ -69,6 +69,16 @@ Después de pedir un enlace, el botón queda deshabilitado 60 segundos (con cuen
 regresiva) aunque cierres la página o la sesión — es para no gastar de un tirón el
 cupo de correos del plan gratis de Supabase, que es bastante bajo.
 
+## Actualizaciones a la base de datos
+
+Cuando el esquema cambia después de que ya tenías el proyecto corriendo, dejo un archivo
+`supabase/algo.sql` con el cambio puntual para que lo corras una vez en el SQL Editor,
+sin perder tu progreso. Los que ya existen:
+
+- [`fix_permissions.sql`](supabase/fix_permissions.sql) — arregla "permission denied".
+- [`add_mastered_column.sql`](supabase/add_mastered_column.sql) — agrega la columna para
+  marcar palabras como dominadas (★).
+
 ## 5. Agregar una semana nueva
 
 Cuando tengas la siguiente lista de palabras, pásamela y te genero un archivo
@@ -80,15 +90,37 @@ nada. La semana nueva aparece sola como una carpeta más en la pantalla principa
 
 La pantalla principal es "Inglés B1" con una carpeta por semana. Puedes:
 
-- Tocar **Repasar pendientes ahora** para una sesión automática con todo lo que toca
-  repasar hoy (mezclando todas las semanas), sin elegir nada a mano.
+- Tocar **Qué estudiar hoy** para una sesión automática con lo que toca hoy, pero solo
+  de las semanas ya "desbloqueadas" (ver más abajo cómo se desbloquean).
 - Marcar los checkboxes para elegir tarjetas sueltas, secciones enteras (el checkbox del
   encabezado de cada tema) o semanas completas (el checkbox de la carpeta), igual que en
-  Google Drive. Arriba hay un botón **Seleccionar todo / Deseleccionar todo**, y en cuanto
-  eliges algo aparece abajo una barra con **Comenzar con estas**.
+  Google Drive. Esto **no tiene ninguna restricción**: puedes elegir cualquier semana,
+  esté o no desbloqueada. Arriba hay un botón **Seleccionar todo / Deseleccionar todo**,
+  y en cuanto eliges algo aparece abajo una barra con **Comenzar con estas**.
 - Entrar a una carpeta de semana para ver sus tarjetas agrupadas por tema, con un badge
-  que indica si cada una es "nueva", está "pendiente" o "en cuánto tiempo" vuelve a
-  aparecer.
+  que indica si cada una es "nueva", está "pendiente", "en cuánto tiempo" vuelve a
+  aparecer, o "dominada".
+
+### Cómo se desbloquean las semanas en "Qué estudiar hoy"
+
+Solo afecta a ese botón — la navegación manual por carpetas nunca está bloqueada.
+
+- Al principio, "Qué estudiar hoy" solo incluye la Semana 1.
+- En cuanto el **80%** de las palabras de la semana activa queden marcadas como
+  **dominadas** (con el botón ★, ver abajo), se desbloquea la siguiente semana ese mismo
+  día — no hay que esperar a que "pase la semana".
+- Si no llegas al 80% aunque pase mucho tiempo, "Qué estudiar hoy" se queda en esa misma
+  semana hasta que la domines lo suficiente.
+- No depende de fechas de registro ni de cronómetros: se recalcula solo, según cuánto
+  llevas dominado.
+
+### Marcar una palabra como dominada (★)
+
+Dentro de la carpeta de una semana, cada palabra tiene una estrellita a la derecha.
+Tócala para marcarla como **dominada**: nunca más va a aparecer en "Qué estudiar hoy" ni
+en "Repasar pendientes de esta semana" (a menos que la elijas a mano con el checkbox), y
+cuenta para el porcentaje que desbloquea la siguiente semana. Tócala de nuevo para
+quitarle esa marca.
 
 ## Cómo funciona el repaso
 

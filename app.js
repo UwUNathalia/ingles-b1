@@ -5,7 +5,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const app = document.getElementById("app");
 
 const NEW_CARDS_PER_SESSION = 20;
-const MASTERED_INTERVAL_DAYS = 21;
+const MASTERY_THRESHOLD = 0.8;
 const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
@@ -42,10 +42,24 @@ function humanizeDelta(ms) {
 }
 
 function dueBadge(word, now) {
+  if (word.progress?.mastered) return { text: "dominada", cls: "is-mastered" };
   if (!word.progress) return { text: "nueva", cls: "is-new" };
   const due = new Date(word.progress.due_at);
   if (due <= now) return { text: "pendiente", cls: "is-due" };
   return { text: `en ${humanizeDelta(due - now)}`, cls: "" };
+}
+
+// Semana activa: la primera semana (en orden) cuyo % de palabras dominadas
+// todavía no llega al umbral. Es una función pura del progreso guardado, no
+// depende de fechas de registro: si dominas una semana antes de lo esperado,
+// la siguiente se "desbloquea" ese mismo día; si te tardas más, se queda ahí.
+function computeActiveWeek(byWeek, weeks) {
+  for (const week of weeks) {
+    const list = byWeek.get(week);
+    const masteredCount = list.filter((w) => w.progress?.mastered).length;
+    if (masteredCount / list.length < MASTERY_THRESHOLD) return week;
+  }
+  return weeks.length ? weeks[weeks.length - 1] : null;
 }
 
 // Repaso de 4 botones: Otra vez / Difícil / Bien / Fácil.
@@ -107,7 +121,7 @@ async function fetchWordsWithProgress() {
   while (true) {
     const { data, error } = await supabase
       .from("words")
-      .select("id, week, section, en, es, progress(id, stage, ease, interval_days, due_at)")
+      .select("id, week, section, en, es, progress(id, stage, ease, interval_days, due_at, mastered)")
       .order("week", { ascending: true })
       .order("id", { ascending: true })
       .range(from, from + pageSize - 1);
@@ -301,9 +315,14 @@ function drawRoot() {
   const now = new Date();
   const byWeek = groupByWeek();
   const weeks = [...byWeek.keys()].sort((a, b) => a - b);
+  const activeWeek = computeActiveWeek(byWeek, weeks);
 
-  const dueReview = state.words.filter((w) => w.progress && new Date(w.progress.due_at) <= now);
-  const dueNew = shuffle(state.words.filter((w) => !w.progress)).slice(0, NEW_CARDS_PER_SESSION);
+  // La cola automática de "qué estudiar hoy" solo mira semanas ya desbloqueadas
+  // (activeWeek para abajo). Dominar una semana antes de tiempo desbloquea la
+  // siguiente ese mismo día; no dominarla la mantiene como la semana activa.
+  const unlockedWords = activeWeek == null ? [] : state.words.filter((w) => w.week <= activeWeek);
+  const dueReview = unlockedWords.filter((w) => w.progress && !w.progress.mastered && new Date(w.progress.due_at) <= now);
+  const dueNew = shuffle(unlockedWords.filter((w) => !w.progress)).slice(0, NEW_CARDS_PER_SESSION);
   const autoQueue = shuffle([...dueReview, ...dueNew]);
 
   const allSelected = state.words.length > 0 && state.words.every((w) => state.selection.has(w.id));
@@ -313,8 +332,8 @@ function drawRoot() {
       const list = byWeek.get(week);
       const total = list.length;
       const selectedCount = list.filter((w) => state.selection.has(w.id)).length;
-      const due = list.filter((w) => !w.progress || new Date(w.progress.due_at) <= now).length;
-      const mastered = list.filter((w) => w.progress?.stage === "review" && w.progress.interval_days >= MASTERED_INTERVAL_DAYS).length;
+      const mastered = list.filter((w) => w.progress?.mastered).length;
+      const due = list.filter((w) => !w.progress?.mastered && (!w.progress || new Date(w.progress.due_at) <= now)).length;
       return `
         <div class="folder-row" data-week="${week}">
           <input type="checkbox" data-week-checkbox="${week}" ${selectedCount === total && total > 0 ? "checked" : ""} />
@@ -337,7 +356,7 @@ function drawRoot() {
       </div>
     </header>
     <button class="primary quick-action-row" id="auto-review-btn" ${autoQueue.length === 0 ? "disabled" : ""}>
-      <span>Repasar pendientes ahora</span>
+      <span>Qué estudiar hoy${activeWeek != null ? ` (semana ${activeWeek})` : ""}</span>
       <span>${autoQueue.length}</span>
     </button>
     <div class="select-bar">
@@ -359,7 +378,7 @@ function drawRoot() {
   document.getElementById("logout-btn").addEventListener("click", confirmLogout);
   setupThemeToggle();
   document.getElementById("auto-review-btn").addEventListener("click", () => {
-    startStudySession(autoQueue, { label: "Repaso de hoy", onExit: drawRoot });
+    startStudySession(autoQueue, { label: "Qué estudiar hoy", onExit: drawRoot });
   });
   document.getElementById("select-all-btn").addEventListener("click", () => {
     if (allSelected) state.selection.clear();
@@ -394,7 +413,7 @@ function drawWeek(week) {
     bySection.get(w.section).push(w);
   }
 
-  const dueList = list.filter((w) => !w.progress || new Date(w.progress.due_at) <= now);
+  const dueList = list.filter((w) => !w.progress?.mastered && (!w.progress || new Date(w.progress.due_at) <= now));
   const allSelected = list.length > 0 && list.every((w) => state.selection.has(w.id));
 
   const sectionsHtml = [...bySection.entries()]
@@ -404,6 +423,7 @@ function drawWeek(week) {
         .map((w) => {
           const badge = dueBadge(w, now);
           const checked = state.selection.has(w.id);
+          const mastered = w.progress?.mastered ?? false;
           return `
             <div class="word-row" data-id="${w.id}">
               <input type="checkbox" data-word-checkbox="${w.id}" ${checked ? "checked" : ""} />
@@ -412,6 +432,7 @@ function drawWeek(week) {
                 <span class="es">${escapeHtml(w.es)}</span>
               </div>
               <span class="due-badge ${badge.cls}">${badge.text}</span>
+              <button type="button" class="mastered-btn ${mastered ? "is-mastered" : ""}" data-mastered-toggle="${w.id}" title="${mastered ? "Quitar de dominadas" : "Marcar como dominada"}">${mastered ? "★" : "☆"}</button>
             </div>
           `;
         })
@@ -469,11 +490,26 @@ function drawWeek(week) {
   });
   document.querySelectorAll(".word-row").forEach((row) => {
     row.addEventListener("click", (e) => {
-      if (e.target.matches('input[type="checkbox"]')) return;
+      if (e.target.closest('input[type="checkbox"], .mastered-btn')) return;
       const id = Number(row.dataset.id);
       if (state.selection.has(id)) state.selection.delete(id);
       else state.selection.add(id);
       drawWeek(week);
+    });
+  });
+  document.querySelectorAll("[data-mastered-toggle]").forEach((btn) => {
+    btn.addEventListener("click", async (e) => {
+      e.stopPropagation();
+      const id = Number(btn.dataset.masteredToggle);
+      const word = list.find((w) => w.id === id);
+      const mastered = !(word.progress?.mastered ?? false);
+      word.progress = { ...(word.progress || {}), mastered };
+      drawWeek(week);
+      try {
+        await saveProgress(state.session.user.id, id, { mastered });
+      } catch (err) {
+        console.error("No se pudo guardar dominado:", err);
+      }
     });
   });
   attachSelectionBarHandlers(() => drawWeek(week));

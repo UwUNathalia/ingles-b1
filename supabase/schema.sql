@@ -22,6 +22,7 @@ create table if not exists progress (
   interval_days numeric not null default 0,
   due_at timestamptz not null default now(),
   last_reviewed timestamptz,
+  mastered boolean not null default false,
   unique (user_id, word_id)
 );
 
