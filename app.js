@@ -158,49 +158,67 @@ function renderLoading() {
   app.innerHTML = `<p style="text-align:center; color: var(--muted); margin-top: 40px;">Cargando…</p>`;
 }
 
+const OTP_COOLDOWN_MS = 60 * 1000;
+const OTP_COOLDOWN_KEY = "otpLastSentAt";
+
+function otpCooldownRemainingMs() {
+  const last = Number(localStorage.getItem(OTP_COOLDOWN_KEY) || 0);
+  return Math.max(0, OTP_COOLDOWN_MS - (Date.now() - last));
+}
+
 function renderAuth() {
   app.innerHTML = `
     <div class="center-screen">
       <div class="card">
         <h1 style="margin-top:0;">Inglés B1 · Fichas</h1>
-        <p style="color: var(--muted);">Entra con tu correo y una contraseña (invéntala, no se manda ningún correo).</p>
+        <p style="color: var(--muted);">Ingresa tu correo y te enviamos un enlace para entrar (sin contraseña).</p>
         <form id="auth-form">
           <input type="email" id="email-input" placeholder="tu@correo.com" required autocomplete="email" />
-          <input type="password" id="password-input" placeholder="Contraseña (mínimo 6 caracteres)" required minlength="6" autocomplete="current-password" />
-          <div style="display:flex; gap:10px;">
-            <button type="submit" class="primary" style="flex:1;">Entrar</button>
-            <button type="button" class="ghost" id="signup-btn" style="flex:1;">Crear cuenta</button>
-          </div>
+          <button type="submit" class="primary" id="send-otp-btn" style="width:100%;">Enviar enlace mágico</button>
         </form>
         <p id="auth-msg" style="color: var(--muted); font-size: 0.9rem;"></p>
       </div>
     </div>
   `;
-  const emailInput = document.getElementById("email-input");
-  const passwordInput = document.getElementById("password-input");
+  const btn = document.getElementById("send-otp-btn");
   const msg = document.getElementById("auth-msg");
+  let cooldownTimer = null;
+
+  function tickCooldown() {
+    const remaining = otpCooldownRemainingMs();
+    if (remaining <= 0) {
+      btn.disabled = false;
+      btn.textContent = "Enviar enlace mágico";
+      clearInterval(cooldownTimer);
+      cooldownTimer = null;
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = `Espera ${Math.ceil(remaining / 1000)}s…`;
+  }
+
+  if (otpCooldownRemainingMs() > 0) {
+    cooldownTimer = setInterval(tickCooldown, 1000);
+    tickCooldown();
+  }
 
   document.getElementById("auth-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    msg.textContent = "Entrando…";
-    const { error } = await supabase.auth.signInWithPassword({
-      email: emailInput.value.trim(),
-      password: passwordInput.value,
+    if (otpCooldownRemainingMs() > 0) return;
+    const email = document.getElementById("email-input").value.trim();
+    msg.textContent = "Enviando…";
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { emailRedirectTo: window.location.href },
     });
-    msg.textContent = error ? `Error: ${error.message}` : "";
-  });
-
-  document.getElementById("signup-btn").addEventListener("click", async () => {
-    if (!emailInput.value.trim() || passwordInput.value.length < 6) {
-      msg.textContent = "Escribe un correo y una contraseña de al menos 6 caracteres.";
+    if (error) {
+      msg.textContent = `Error: ${error.message}`;
       return;
     }
-    msg.textContent = "Creando cuenta…";
-    const { error } = await supabase.auth.signUp({
-      email: emailInput.value.trim(),
-      password: passwordInput.value,
-    });
-    msg.textContent = error ? `Error: ${error.message}` : "";
+    localStorage.setItem(OTP_COOLDOWN_KEY, String(Date.now()));
+    msg.textContent = `Listo. Revisa ${email} y abre el enlace desde este mismo dispositivo.`;
+    cooldownTimer = setInterval(tickCooldown, 1000);
+    tickCooldown();
   });
 }
 
