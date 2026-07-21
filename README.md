@@ -13,12 +13,11 @@ entre ambos.
 5. Repite **New query** → pegar → **Run** con cada archivo `supabase/semana_NN.sql`, uno por
    uno, del `semana_01.sql` al `semana_30.sql` (están todos en la carpeta [`supabase/`](supabase)).
    (Esto carga las 2000 palabras de las semanas 1 a 30, el curso B1 completo).
-6. Ve a **Authentication → Providers** y confirma que **Email** esté habilitado
-   (viene habilitado por defecto). No hace falta contraseña: usamos "enlace mágico".
-7. Ve a **Authentication → URL Configuration** y en **Redirect URLs** agrega la URL donde
-   vayas a publicar la app (ej: `https://TU-USUARIO.github.io/ingles-b1/`). Puedes agregarla
-   después de publicar en GitHub Pages (paso 3).
-8. Ve a **Project Settings → API**. Copia el **Project URL** y la **anon public key**.
+6. Ve a **Authentication → Sign In / Providers** y en el proveedor **Email** desactiva
+   **"Confirm email"**. Así el login es con correo + contraseña y no se manda ningún
+   correo (evita el límite de envíos del plan gratis de Supabase).
+7. Ve a **Project Settings → API**. Copia el **Project URL** y la **anon public key**
+   (o "publishable key" en proyectos nuevos).
 
 ## 2. Configurar la app con tus llaves
 
@@ -54,15 +53,12 @@ https://TU-USUARIO.github.io/ingles-b1/
 Ábrela desde el celular y el computador con esa misma URL — el progreso se sincroniza
 automáticamente porque vive en Supabase, no en el navegador.
 
-No olvides volver al paso 1.7 y agregar esta URL exacta a **Redirect URLs** en Supabase,
-o el enlace mágico de login no te va a devolver a la app.
-
 ## 4. Iniciar sesión
 
-Abre la URL, escribe tu correo y dale **Enviar enlace mágico**. Revisa tu correo y abre
-el enlace **desde el mismo dispositivo/navegador** donde quieres iniciar sesión. Repite
-esto la primera vez en cada dispositivo (celular y computador) — después queda la sesión
-guardada.
+Abre la URL, escribe tu correo y una contraseña que inventes (mínimo 6 caracteres), y
+dale **Crear cuenta** la primera vez. Las siguientes veces (en cualquier dispositivo)
+usas el mismo correo y contraseña con el botón **Entrar**. No se manda ningún correo,
+así que no hay límite de intentos.
 
 ## 5. Agregar una semana nueva
 

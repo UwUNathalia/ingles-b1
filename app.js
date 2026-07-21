@@ -163,27 +163,44 @@ function renderAuth() {
     <div class="center-screen">
       <div class="card">
         <h1 style="margin-top:0;">Inglés B1 · Fichas</h1>
-        <p style="color: var(--muted);">Ingresa tu correo y te enviamos un enlace para entrar (sin contraseña).</p>
+        <p style="color: var(--muted);">Entra con tu correo y una contraseña (invéntala, no se manda ningún correo).</p>
         <form id="auth-form">
           <input type="email" id="email-input" placeholder="tu@correo.com" required autocomplete="email" />
-          <button type="submit" class="primary" style="width:100%;">Enviar enlace mágico</button>
+          <input type="password" id="password-input" placeholder="Contraseña (mínimo 6 caracteres)" required minlength="6" autocomplete="current-password" />
+          <div style="display:flex; gap:10px;">
+            <button type="submit" class="primary" style="flex:1;">Entrar</button>
+            <button type="button" class="ghost" id="signup-btn" style="flex:1;">Crear cuenta</button>
+          </div>
         </form>
         <p id="auth-msg" style="color: var(--muted); font-size: 0.9rem;"></p>
       </div>
     </div>
   `;
+  const emailInput = document.getElementById("email-input");
+  const passwordInput = document.getElementById("password-input");
+  const msg = document.getElementById("auth-msg");
+
   document.getElementById("auth-form").addEventListener("submit", async (e) => {
     e.preventDefault();
-    const email = document.getElementById("email-input").value.trim();
-    const msg = document.getElementById("auth-msg");
-    msg.textContent = "Enviando…";
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { emailRedirectTo: window.location.href },
+    msg.textContent = "Entrando…";
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
     });
-    msg.textContent = error
-      ? `Error: ${error.message}`
-      : `Listo. Revisa ${email} y abre el enlace desde este mismo dispositivo.`;
+    msg.textContent = error ? `Error: ${error.message}` : "";
+  });
+
+  document.getElementById("signup-btn").addEventListener("click", async () => {
+    if (!emailInput.value.trim() || passwordInput.value.length < 6) {
+      msg.textContent = "Escribe un correo y una contraseña de al menos 6 caracteres.";
+      return;
+    }
+    msg.textContent = "Creando cuenta…";
+    const { error } = await supabase.auth.signUp({
+      email: emailInput.value.trim(),
+      password: passwordInput.value,
+    });
+    msg.textContent = error ? `Error: ${error.message}` : "";
   });
 }
 
