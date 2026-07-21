@@ -1,14 +1,14 @@
 :root {
-  --bg: #f5f6fa;
+  --bg: #eef0f5;
   --card-bg: #ffffff;
   --text: #1c1e26;
-  --muted: #6b7280;
+  --muted: #5b6472;
   --accent: #4f46e5;
   --accent-soft: #eef2ff;
   --good: #16a34a;
   --hard: #d97706;
   --again: #dc2626;
-  --border: #e5e7eb;
+  --border: #dde1e8;
   --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
 }
 
@@ -30,8 +30,8 @@
   --shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 :root[data-theme="light"] {
-  --bg: #f5f6fa; --card-bg: #ffffff; --text: #1c1e26; --muted: #6b7280;
-  --accent: #4f46e5; --accent-soft: #eef2ff; --border: #e5e7eb;
+  --bg: #eef0f5; --card-bg: #ffffff; --text: #1c1e26; --muted: #5b6472;
+  --accent: #4f46e5; --accent-soft: #eef2ff; --border: #dde1e8;
   --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
 }
 
@@ -222,13 +222,48 @@ footer.small-print {
   margin-top: 40px;
 }
 
-/* Selección tipo Drive */
+/* Selección tipo Drive: burbujas redondas en vez de cuadritos */
 input[type="checkbox"] {
-  width: 20px;
-  height: 20px;
-  accent-color: var(--accent);
+  appearance: none;
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  min-width: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--card-bg);
   flex-shrink: 0;
   cursor: pointer;
+  position: relative;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+input[type="checkbox"]:hover { border-color: var(--accent); }
+input[type="checkbox"]:checked,
+input[type="checkbox"]:indeterminate {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 5px;
+  height: 9px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+input[type="checkbox"]:indeterminate::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 10px;
+  height: 2px;
+  background: white;
+  border-radius: 2px;
+  transform: translate(-50%, -50%);
 }
 
 .select-bar {
@@ -261,9 +296,23 @@ input[type="checkbox"] {
   cursor: pointer;
 }
 .folder-row .row-main { flex: 1; min-width: 0; }
-.folder-row .title { font-weight: 600; }
+.folder-row .title { font-weight: 600; display: flex; align-items: center; gap: 10px; }
 .folder-row .subtitle { color: var(--muted); font-size: 0.82rem; margin-top: 2px; }
 .folder-row .chevron { color: var(--muted); font-size: 1.2rem; }
+
+.week-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
 
 .section-header {
   display: flex;
@@ -332,3 +381,43 @@ button.quick-action-row {
 }
 .selection-bar .count { font-weight: 600; font-size: 0.9rem; }
 .selection-bar .actions { display: flex; gap: 8px; align-items: center; }
+
+/* Botón de tema claro/oscuro */
+button.theme-toggle {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  padding: 0;
+}
+
+/* Modal de confirmación (ej. cerrar sesión) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 50;
+}
+.modal-box {
+  background: var(--card-bg);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  padding: 22px;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+}
+.modal-box p { color: var(--text); margin: 0 0 18px; }
+.modal-actions { display: flex; gap: 10px; }
+.modal-actions button { flex: 1; padding: 12px; font-weight: 600; }
+button.danger { background: var(--again); color: white; }

@@ -152,6 +152,61 @@ function attachSelectionBarHandlers(rerender) {
   });
 }
 
+// ---------- tema claro/oscuro ----------
+
+const THEME_KEY = "theme";
+
+function getPreferredTheme() {
+  const saved = localStorage.getItem(THEME_KEY);
+  if (saved === "light" || saved === "dark") return saved;
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function setupThemeToggle() {
+  const btn = document.getElementById("theme-toggle-btn");
+  if (!btn) return;
+  const paint = () => {
+    const theme = document.documentElement.getAttribute("data-theme") || getPreferredTheme();
+    btn.textContent = theme === "dark" ? "☀️" : "🌙";
+  };
+  paint();
+  btn.addEventListener("click", () => {
+    const next = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    applyTheme(next);
+    localStorage.setItem(THEME_KEY, next);
+    paint();
+  });
+}
+
+// ---------- confirmar acciones ----------
+
+function confirmLogout() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <p>¿Seguro que quieres salir?</p>
+      <div class="modal-actions">
+        <button class="ghost" id="modal-cancel-btn">Cancelar</button>
+        <button class="danger" id="modal-confirm-btn">Sí, salir</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) overlay.remove();
+  });
+  document.getElementById("modal-cancel-btn").addEventListener("click", () => overlay.remove());
+  document.getElementById("modal-confirm-btn").addEventListener("click", () => {
+    overlay.remove();
+    supabase.auth.signOut();
+  });
+}
+
 // ---------- pantallas ----------
 
 function renderLoading() {
@@ -264,7 +319,7 @@ function drawRoot() {
         <div class="folder-row" data-week="${week}">
           <input type="checkbox" data-week-checkbox="${week}" ${selectedCount === total && total > 0 ? "checked" : ""} />
           <div class="row-main">
-            <div class="title">📁 Semana ${week}</div>
+            <div class="title"><span class="week-badge">${week}</span> Semana ${week}</div>
             <div class="subtitle">${total} palabras · ${mastered} dominadas${due > 0 ? ` · ${due} pendientes` : ""}</div>
           </div>
           <span class="chevron">›</span>
@@ -276,7 +331,10 @@ function drawRoot() {
   app.innerHTML = `
     <header class="topbar">
       <h1>Inglés B1</h1>
-      <button class="link" id="logout-btn">Salir</button>
+      <div class="top-actions">
+        <button class="theme-toggle" id="theme-toggle-btn" title="Cambiar tema" aria-label="Cambiar tema clarito/oscuro"></button>
+        <button class="link" id="logout-btn">Salir</button>
+      </div>
     </header>
     <button class="primary quick-action-row" id="auto-review-btn" ${autoQueue.length === 0 ? "disabled" : ""}>
       <span>Repasar pendientes ahora</span>
@@ -298,7 +356,8 @@ function drawRoot() {
     cb.indeterminate = selectedCount > 0 && selectedCount < list.length;
   });
 
-  document.getElementById("logout-btn").addEventListener("click", () => supabase.auth.signOut());
+  document.getElementById("logout-btn").addEventListener("click", confirmLogout);
+  setupThemeToggle();
   document.getElementById("auto-review-btn").addEventListener("click", () => {
     startStudySession(autoQueue, { label: "Repaso de hoy", onExit: drawRoot });
   });
@@ -525,6 +584,7 @@ function startStudySession(cards, { label, onExit }) {
 
 // ---------- boot ----------
 
+applyTheme(getPreferredTheme());
 renderLoading();
 
 // TOKEN_REFRESHED se dispara cada ~hora sin cambiar de usuario: solo refrescamos
